@@ -1,24 +1,26 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
+from streamlit.errors import StreamlitSecretNotFoundError
+
+GEMINI_MODEL = "gemini-3.6-flash"
 
 
-def get_gemini_client():
-    """Initialise and return a Gemini client.
-    Expects the API key in `st.secrets["gemini"]["api_key"]`.
-    Raises a Streamlit error if not found.
-    """
+def get_gemini_client() -> genai.Client:
+    """Create a Gemini client using the key in Streamlit secrets."""
     try:
         api_key = st.secrets["gemini"]["api_key"]
-    except Exception:
+    except (KeyError, StreamlitSecretNotFoundError, TypeError):
         st.error(
-"Gemini API key not found. Please add it to `.streamlit/secrets.toml` as:\n"
-"```toml\n"
-"[gemini]\n"
-'api_key = "YOUR_GEMINI_API_KEY"\n'
-"```"
+            "Gemini API key not found. Add it to `.streamlit/secrets.toml` "
+            "or the Streamlit Cloud Secrets settings using:\n"
+            "```toml\n"
+            "[gemini]\n"
+            'api_key = "YOUR_GEMINI_API_KEY"\n'
+            "```"
         )
         st.stop()
-    # Initialise the client (once per session)
-    genai.configure(api_key=api_key)
-    # Return a model object; we can reuse the same model for multiple calls.
-    return genai.GenerativeModel('gemini-1.5-flash')
+    if not isinstance(api_key, str) or not api_key.strip():
+        st.error("The Gemini API key in Streamlit secrets is empty or invalid.")
+        st.stop()
+
+    return genai.Client(api_key=api_key)
